@@ -1,37 +1,69 @@
 package main
 
-// https://adventofcode.com/2022/day/1
+// https://adventofcode.com/2023/day/1
 
 import (
 	"aoc/helper"
 	"fmt"
-	"sort"
-	"strconv"
 	"strings"
 )
 
 func main() {
 	lines := helper.ReadLines("input.txt")
 
-	elfCounts := getElfCounts(lines)
+	calibrationValues1 := getCalibrationValues(lines, map[string]int{"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9})
+	solution1 := sumAllCalibrationValues(calibrationValues1)
 
-	sort.Ints(elfCounts)
+	calibrationValues2 := getCalibrationValues(lines, map[string]int{"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
+		"one":   1,
+		"two":   2,
+		"three": 3,
+		"four":  4,
+		"five":  5,
+		"six":   6,
+		"seven": 7,
+		"eight": 8,
+		"nine":  9,
+	})
+	solution2 := sumAllCalibrationValues(calibrationValues2)
 
-	fmt.Println("-> part 1:", elfCounts[len(elfCounts)-1])
-	fmt.Println("-> part 2:", elfCounts[len(elfCounts)-1]+elfCounts[len(elfCounts)-2]+elfCounts[len(elfCounts)-3])
+	fmt.Println("-> part 1:", solution1)
+	fmt.Println("-> part 2:", solution2)
 }
 
-func getElfCounts(lines []string) []int {
-	elfCounts := make([]int, 1)
-	for _, l := range lines {
-		l = strings.TrimSpace(l)
-		if len(l) == 0 {
-			elfCounts = append(elfCounts, 0)
-		} else {
-			d, err := strconv.Atoi(l)
-			helper.ExitOnError(err)
-			elfCounts[len(elfCounts)-1] += d
+func getCalibrationValues(lines []string, tokenMappings map[string]int) []int {
+	calibrationValues := make([]int, 0, len(lines))
+	for _, line := range lines {
+		if len(line) > 0 {
+			tokens := tokenize(line, tokenMappings)
+			if len(tokens) > 0 {
+				val := 10*tokens[0] + tokens[len(tokens)-1]
+				calibrationValues = append(calibrationValues, val)
+			}
 		}
 	}
-	return elfCounts
+	return calibrationValues
+}
+
+func tokenize(line string, tokenMappings map[string]int) []int {
+	runes := []rune(line)
+	tokens := make([]int, 0)
+	for i := 0; i < len(runes); i++ {
+		remainder := string(runes[i:])
+		for t, v := range tokenMappings {
+			if strings.HasPrefix(remainder, t) {
+				tokens = append(tokens, v)
+				break
+			}
+		}
+	}
+	return tokens
+}
+
+func sumAllCalibrationValues(calibrationValues []int) int {
+	var sum int
+	for _, val := range calibrationValues {
+		sum += val
+	}
+	return sum
 }
