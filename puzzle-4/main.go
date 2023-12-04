@@ -17,10 +17,15 @@ func main() {
 	scratchCards := ParseScratchCards(lines)
 	solution1 := SumScratchCardPoints(scratchCards)
 
+	EvalScratchCardRules(scratchCards)
+	solution2 := CountScratchCards(scratchCards)
+
 	fmt.Println("-> part 1:", solution1)
+	fmt.Println("-> part 2:", solution2)
 }
 
 type ScratchCard struct {
+	Count          int
 	WinningNumbers map[int]struct{}
 	HavingNumbers  []int
 }
@@ -39,6 +44,7 @@ func ParseScratchCards(lines []string) []ScratchCard {
 			}
 			havingNumbers := ParseSpaceSeparatedInts(m[3])
 			scratchCards = append(scratchCards, ScratchCard{
+				Count:          1,
 				WinningNumbers: winningNumbersMap,
 				HavingNumbers:  havingNumbers,
 			})
@@ -80,8 +86,27 @@ func (sc ScratchCard) MatchCount() int {
 func SumScratchCardPoints(scratchCards []ScratchCard) int {
 	sum := 0
 	for _, sc := range scratchCards {
-		fmt.Println(sc.Points())
 		sum += sc.Points()
+	}
+	return sum
+}
+
+func EvalScratchCardRules(scratchCards []ScratchCard) {
+	for i := range scratchCards {
+		matchCount := scratchCards[i].MatchCount()
+		for j := 0; j < matchCount; j++ {
+			index := i + 1 + j
+			if index < len(scratchCards) {
+				scratchCards[index].Count += scratchCards[i].Count
+			}
+		}
+	}
+}
+
+func CountScratchCards(scratchCards []ScratchCard) int {
+	sum := 0
+	for _, sc := range scratchCards {
+		sum += sc.Count
 	}
 	return sum
 }
