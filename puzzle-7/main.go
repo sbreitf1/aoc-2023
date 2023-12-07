@@ -24,8 +24,8 @@ func main() {
 	lines := helper.ReadNonEmptyLines("input.txt")
 
 	bids := ParseBids(lines)
-	solution1 := ComputeSolution1(bids)
-	solution2 := ComputeSolution2(bids)
+	solution1 := ComputeSolution(bids, false)
+	solution2 := ComputeSolution(bids, true)
 
 	fmt.Println("-> part 1:", solution1)
 	fmt.Println("-> part 2:", solution2)
@@ -66,7 +66,10 @@ func (c Card) String() string {
 	return string(c)
 }
 
-func (c Card) Value1() int {
+func (c Card) Value(withJoker bool) int {
+	if withJoker && c == 'J' {
+		return 0
+	}
 	if c >= '2' && c <= '9' {
 		return int(c-'2') + 2
 	}
@@ -75,26 +78,6 @@ func (c Card) Value1() int {
 		return 10
 	case 'J':
 		return 11
-	case 'Q':
-		return 12
-	case 'K':
-		return 13
-	case 'A':
-		return 14
-	default:
-		panic(fmt.Sprintf("unknown card %q", c))
-	}
-}
-
-func (c Card) Value2() int {
-	if c >= '2' && c <= '9' {
-		return int(c-'2') + 2
-	}
-	switch c {
-	case 'T':
-		return 10
-	case 'J':
-		return 0
 	case 'Q':
 		return 12
 	case 'K':
@@ -127,57 +110,24 @@ func (t Type) String() string {
 	}
 }
 
-func (h Hand) GetType1() Type {
+func (h Hand) GetType(withJoker bool) Type {
 	cardCounts := make(map[Card]int)
 	for _, c := range h {
 		currentCount := cardCounts[c]
 		cardCounts[c] = currentCount + 1
 	}
 
-	takeNum := func(searchNum int) bool {
-		for c, num := range cardCounts {
-			if num == searchNum {
-				delete(cardCounts, c)
-				return true
-			}
+	var jokerCount int
+	if withJoker {
+		var ok bool
+		jokerCount, ok = cardCounts['J']
+		if ok {
+			delete(cardCounts, 'J')
 		}
-		return false
-	}
 
-	if takeNum(5) {
-		return TypeFiveOfAKind
-	}
-	if takeNum(4) {
-		return TypeFourOfAKind
-	}
-	if takeNum(3) {
-		if takeNum(2) {
-			return TypeFullHouse
+		if jokerCount == 5 {
+			return TypeFiveOfAKind
 		}
-		return TypeThreeOfAKind
-	}
-	if takeNum(2) {
-		if takeNum(2) {
-			return TypeTwoPair
-		}
-		return TypeOnePair
-	}
-	return TypeHighCard
-}
-
-func (h Hand) GetType2() Type {
-	cardCounts := make(map[Card]int)
-	for _, c := range h {
-		currentCount := cardCounts[c]
-		cardCounts[c] = currentCount + 1
-	}
-	jokerCount, ok := cardCounts['J']
-	if ok {
-		delete(cardCounts, 'J')
-	}
-
-	if jokerCount == 5 {
-		return TypeFiveOfAKind
 	}
 
 	takeNum := func(searchNum int) bool {
@@ -212,9 +162,9 @@ func (h Hand) GetType2() Type {
 	return TypeHighCard
 }
 
-func LessHand1(h1, h2 Hand) bool {
-	t1 := h1.GetType1()
-	t2 := h2.GetType1()
+func LessHand(h1, h2 Hand, withJoker bool) bool {
+	t1 := h1.GetType(withJoker)
+	t2 := h2.GetType(withJoker)
 	if t1 < t2 {
 		return true
 	}
@@ -222,51 +172,19 @@ func LessHand1(h1, h2 Hand) bool {
 		return false
 	}
 	for i := 0; i < 5; i++ {
-		if h1[i].Value1() < h2[i].Value1() {
+		if h1[i].Value(withJoker) < h2[i].Value(withJoker) {
 			return true
 		}
-		if h1[i].Value1() > h2[i].Value1() {
+		if h1[i].Value(withJoker) > h2[i].Value(withJoker) {
 			return false
 		}
 	}
 	return false
 }
 
-func LessHand2(h1, h2 Hand) bool {
-	t1 := h1.GetType2()
-	t2 := h2.GetType2()
-	if t1 < t2 {
-		return true
-	}
-	if t1 > t2 {
-		return false
-	}
-	for i := 0; i < 5; i++ {
-		if h1[i].Value2() < h2[i].Value2() {
-			return true
-		}
-		if h1[i].Value2() > h2[i].Value2() {
-			return false
-		}
-	}
-	return false
-}
-
-func ComputeSolution1(bids []Bid) int {
+func ComputeSolution(bids []Bid, withJoker bool) int {
 	sort.Slice(bids, func(i, j int) bool {
-		return !LessHand1(bids[i].Hand, bids[j].Hand)
-	})
-	totalWinnings := 0
-	for i := range bids {
-		rank := len(bids) - i
-		totalWinnings += bids[i].Bid * rank
-	}
-	return totalWinnings
-}
-
-func ComputeSolution2(bids []Bid) int {
-	sort.Slice(bids, func(i, j int) bool {
-		return !LessHand2(bids[i].Hand, bids[j].Hand)
+		return !LessHand(bids[i].Hand, bids[j].Hand, withJoker)
 	})
 	totalWinnings := 0
 	for i := range bids {
