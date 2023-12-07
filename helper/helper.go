@@ -39,6 +39,17 @@ func ReadLines(file string) []string {
 	return lines
 }
 
+func ReadNonEmptyLines(file string) []string {
+	lines := ReadLines(file)
+	nonEmptyLines := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if len(line) > 0 {
+			nonEmptyLines = append(nonEmptyLines, line)
+		}
+	}
+	return nonEmptyLines
+}
+
 func ReadString(file string) string {
 	data, err := os.ReadFile(file)
 	ExitOnError(err)
