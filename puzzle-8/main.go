@@ -105,7 +105,6 @@ func GetGhostPathLength(mover *NetworkMover) int64 {
 			break
 		}
 		currentPositions = mover.MoveMany(currentPositions, count, 1)
-		fmt.Println("->", currentPositions)
 	}
 	return count
 }
@@ -118,7 +117,11 @@ func GetStartPositions(nodes Network) []string {
 		}
 	}
 	sort.Strings(startPositions)
-	return startPositions[:2]
+	return startPositions[:3]
+	// least common multiple 19637 = 19637 = empirische Lösung
+	// least common multiple 19637,12643 = 922939 = empirische Lösung
+	// least common multiple 19637,12643,11567 = 39686377 = empirische Lösung
+	// least common multiple 19637,12643,11567,15871,14257,19099 = 8811050362409 (= Vermutung: Entspricht auch der empirischen Lösung -> Tatsächlich! :D)
 }
 
 func (nm *NetworkMover) MoveMany(positions []string, sequenceIndex, steps int64) []string {
