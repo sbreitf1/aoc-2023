@@ -96,14 +96,16 @@ type DirectLinkHeader struct {
 }
 
 func GetGhostPathLength(mover *NetworkMover) int64 {
-	return -1
 	currentPositions := GetStartPositions(mover.Network)
+	fmt.Println("start:", currentPositions)
 	var count int64
 	for ; ; count++ {
 		if IsEndPosition(currentPositions) {
+			fmt.Println("end:", currentPositions)
 			break
 		}
 		currentPositions = mover.MoveMany(currentPositions, count, 1)
+		fmt.Println("->", currentPositions)
 	}
 	return count
 }
@@ -116,7 +118,7 @@ func GetStartPositions(nodes Network) []string {
 		}
 	}
 	sort.Strings(startPositions)
-	return startPositions
+	return startPositions[:2]
 }
 
 func (nm *NetworkMover) MoveMany(positions []string, sequenceIndex, steps int64) []string {
@@ -138,7 +140,9 @@ func (nm *NetworkMover) Move(pos string, sequenceIndex, steps int64) string {
 	if newPos, ok := nm.DirectLinks[hdr]; ok {
 		return newPos
 	}
-	return nm.newMove(pos, sequenceIndex, steps)
+	newPos := nm.newMove(pos, sequenceIndex, steps)
+	nm.DirectLinks[hdr] = newPos
+	return newPos
 }
 
 func (nm *NetworkMover) newMove(pos string, sequenceIndex, steps int64) string {
@@ -152,6 +156,7 @@ func (nm *NetworkMover) newMove(pos string, sequenceIndex, steps int64) string {
 func DetectLoop(sequence []Dir, nodes Network, start string) (int, int) {
 	fmt.Println("detect loop for", start)
 	// 8811050362409 = least common multiple 19637,12643,11567,15871,14257,19099
+	// ... und das ist einfach wirklich die Lösung :D
 	knownSequenceStarts := map[string]int{}
 	currentPos := start
 	count := 0
