@@ -3,6 +3,7 @@ package helper
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -54,4 +55,17 @@ func ReadString(file string) string {
 	data, err := os.ReadFile(file)
 	ExitOnError(err)
 	return string(data)
+}
+
+func SplitAndParseInts(str string, separator string) []int {
+	parts := strings.Split(str, separator)
+	ints := make([]int, 0, len(parts))
+	for _, p := range parts {
+		if len(p) > 0 {
+			num, err := strconv.Atoi(p)
+			ExitOnError(err)
+			ints = append(ints, num)
+		}
+	}
+	return ints
 }
