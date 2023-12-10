@@ -96,12 +96,40 @@ type DirectLinkHeader struct {
 }
 
 func GetGhostPathLength(mover *NetworkMover) int64 {
-	currentPositions := GetStartPositions(mover.Network)
-	fmt.Println("start:", currentPositions)
+	// least common multiple 19637 = 19637 = empirische Lösung
+	// least common multiple 19637,12643 = 922939 = empirische Lösung
+	// least common multiple 19637,12643,11567 = 39686377 = empirische Lösung
+	// least common multiple 19637,12643,11567,15871,14257,19099 = 8811050362409 (= Vermutung: Entspricht auch der empirischen Lösung -> Tatsächlich! :D)
+	// MANY assumptions here!
+	startPositions := GetStartPositions(mover.Network)
+	solutions := make([]int64, len(startPositions))
+	for i := range startPositions {
+		solutions[i] = GetGhostPathLengthForStartPositions(startPositions[i:i+1], mover)
+	}
+	return LeastCommonMultiple(solutions...)
+}
+
+func LeastCommonMultiple(vals ...int64) int64 {
+	gcd := func(a, b int64) int64 {
+		for b != 0 {
+			t := b
+			b = a % b
+			a = t
+		}
+		return a
+	}
+
+	result := vals[0] * vals[1] / gcd(vals[0], vals[1])
+	for i := 2; i < len(vals); i++ {
+		result = LeastCommonMultiple(result, vals[i])
+	}
+	return result
+}
+func GetGhostPathLengthForStartPositions(startPositions []string, mover *NetworkMover) int64 {
+	currentPositions := startPositions
 	var count int64
 	for ; ; count++ {
 		if IsEndPosition(currentPositions) {
-			fmt.Println("end:", currentPositions)
 			break
 		}
 		currentPositions = mover.MoveMany(currentPositions, count, 1)
@@ -117,11 +145,7 @@ func GetStartPositions(nodes Network) []string {
 		}
 	}
 	sort.Strings(startPositions)
-	return startPositions[:3]
-	// least common multiple 19637 = 19637 = empirische Lösung
-	// least common multiple 19637,12643 = 922939 = empirische Lösung
-	// least common multiple 19637,12643,11567 = 39686377 = empirische Lösung
-	// least common multiple 19637,12643,11567,15871,14257,19099 = 8811050362409 (= Vermutung: Entspricht auch der empirischen Lösung -> Tatsächlich! :D)
+	return startPositions
 }
 
 func (nm *NetworkMover) MoveMany(positions []string, sequenceIndex, steps int64) []string {
@@ -152,7 +176,7 @@ func (nm *NetworkMover) newMove(pos string, sequenceIndex, steps int64) string {
 	if steps == 1 {
 		return nm.Network[pos].GetNext(nm.Sequence[sequenceIndex])
 	}
-	//TODO optimize
+	// could be optimized, nvm...
 	return nm.Move(nm.Move(pos, sequenceIndex, 1), sequenceIndex+1, steps-1)
 }
 
