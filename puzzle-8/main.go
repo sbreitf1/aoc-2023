@@ -180,25 +180,6 @@ func (nm *NetworkMover) newMove(pos string, sequenceIndex, steps int64) string {
 	return nm.Move(nm.Move(pos, sequenceIndex, 1), sequenceIndex+1, steps-1)
 }
 
-func DetectLoop(sequence []Dir, nodes Network, start string) (int, int) {
-	fmt.Println("detect loop for", start)
-	// 8811050362409 = least common multiple 19637,12643,11567,15871,14257,19099
-	// ... und das ist einfach wirklich die Lösung :D
-	knownSequenceStarts := map[string]int{}
-	currentPos := start
-	count := 0
-	for ; ; count++ {
-
-		if count%len(sequence) == 0 {
-			if loopStart, ok := knownSequenceStarts[currentPos]; ok {
-				return loopStart, count - loopStart
-			}
-			knownSequenceStarts[currentPos] = count
-		}
-		currentPos = nodes[currentPos].GetNext(sequence[count%len(sequence)])
-	}
-}
-
 func IsEndPosition(positions []string) bool {
 	for _, p := range positions {
 		if !strings.HasSuffix(p, "Z") {
