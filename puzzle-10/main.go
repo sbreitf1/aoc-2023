@@ -5,7 +5,10 @@ package main
 import (
 	"aoc/helper"
 	"fmt"
+	"math"
 	"strings"
+	"sync"
+	"sync/atomic"
 )
 
 func main() {
@@ -13,8 +16,10 @@ func main() {
 
 	world := ParseWorld(lines)
 	solution1 := world.FindMaxPathToAnimal()
+	solution2 := world.CountEmptyFieldsWithNonZeroWindingNumber()
 
 	fmt.Println("-> part 1:", solution1)
+	fmt.Println("-> part 2:", solution2)
 }
 
 type Point struct {
@@ -30,6 +35,8 @@ type World struct {
 type Tile struct {
 	Rune          rune
 	StepsToAnimal int
+	PartOfLoop    bool
+	Enclosed      bool
 }
 
 func (t Tile) ConnectsToWest() bool {
@@ -127,13 +134,76 @@ func (w *World) CanMoveSouth(x, y int) bool {
 	return y < (w.Height-1) && w.Tiles[y][x].ConnectsToSouth() && w.Tiles[y+1][x].ConnectsToNorth()
 }
 
-func (w *World) VisitedWorldString() string {
-	lines := make([]string, 0)
+func (w *World) ExtractLoop() []Point {
+	if w.Tiles[w.Animal.Y][w.Animal.X].StepsToAnimal != 0 {
+		helper.ExitWithMessage("use World.FindMaxPathToAnimal before World.ExtractLoop")
+	}
+
+	visited := map[Point]bool{}
+
+	loop := []Point{w.Animal}
+	for {
+		t := loop[len(loop)-1]
+		w.Tiles[t.Y][t.X].PartOfLoop = true
+		visited[t] = true
+
+		west := Point{t.X - 1, t.Y}
+		if w.CanMoveWest(t.X, t.Y) && w.Tiles[west.Y][west.X].StepsToAnimal >= 0 {
+			if len(loop) > 2 && west == w.Animal {
+				break
+			}
+			if !visited[west] {
+				loop = append(loop, west)
+				continue
+			}
+		}
+
+		north := Point{t.X, t.Y - 1}
+		if w.CanMoveNorth(t.X, t.Y) && w.Tiles[north.Y][north.X].StepsToAnimal >= 0 {
+			if len(loop) > 2 && north == w.Animal {
+				break
+			}
+			if !visited[north] {
+				loop = append(loop, north)
+				continue
+			}
+		}
+
+		east := Point{t.X + 1, t.Y}
+		if w.CanMoveEast(t.X, t.Y) && w.Tiles[east.Y][east.X].StepsToAnimal >= 0 {
+			if len(loop) > 2 && east == w.Animal {
+				break
+			}
+			if !visited[east] {
+				loop = append(loop, east)
+				continue
+			}
+		}
+
+		south := Point{t.X, t.Y + 1}
+		if w.CanMoveSouth(t.X, t.Y) && w.Tiles[south.Y][south.X].StepsToAnimal >= 0 {
+			if len(loop) > 2 && south == w.Animal {
+				break
+			}
+			if !visited[south] {
+				loop = append(loop, south)
+				continue
+			}
+		}
+	}
+	return loop
+}
+
+func (w *World) String() string {
+	lines := []string{}
 	for y := 0; y < w.Height; y++ {
 		var line string
 		for x := 0; x < w.Width; x++ {
-			if w.Tiles[y][x].StepsToAnimal >= 0 {
-				line += string(w.Tiles[y][x].Rune)
+			t := w.Tiles[y][x]
+			if t.Enclosed {
+				line += "I"
+			} else if t.PartOfLoop {
+				line += string(t.Rune)
 			} else {
 				line += "."
 			}
@@ -141,4 +211,63 @@ func (w *World) VisitedWorldString() string {
 		lines = append(lines, line)
 	}
 	return strings.Join(lines, "\n")
+}
+
+func (w *World) CountEmptyFieldsWithNonZeroWindingNumber() int {
+	loop := w.ExtractLoop()
+	candidates := make([]Point, 0)
+	for y := 0; y < w.Height; y++ {
+		for x := 0; x < w.Width; x++ {
+			if w.Tiles[y][x].Rune == '.' || !w.Tiles[y][x].PartOfLoop {
+				candidates = append(candidates, Point{x, y})
+			}
+		}
+	}
+
+	var count int32
+	var wg sync.WaitGroup
+	for _, p := range candidates {
+		wg.Add(1)
+		go func(p Point) {
+			defer wg.Done()
+
+			windingNumber := ComputeWindingNumber(p, loop)
+			if windingNumber > 0.1 || windingNumber < -0.1 {
+				w.Tiles[p.Y][p.X].Enclosed = true
+				atomic.AddInt32(&count, 1)
+			}
+		}(p)
+	}
+	wg.Wait()
+	return int(count)
+}
+
+func ComputeWindingNumber(p Point, loop []Point) float64 {
+	var windingNumber float64
+	for i := 0; i < len(loop); i++ {
+		l1 := loop[i]
+		l2 := loop[(i+1)%len(loop)]
+		w := ComputeWindingNumberOfLine(p, l1, l2)
+		windingNumber += w
+	}
+	return windingNumber
+}
+
+func ComputeWindingNumberOfLine(p Point, l1, l2 Point) float64 {
+	if p.X == l1.X && p.X == l2.X {
+		return 0
+	}
+	if p.Y == l1.Y && p.Y == l2.Y {
+		return 0
+	}
+	a1 := math.Atan2(float64(p.Y)-float64(l1.Y), float64(p.X)-float64(l1.X))
+	a2 := math.Atan2(float64(p.Y)-float64(l2.Y), float64(p.X)-float64(l2.X))
+	diff := a2 - a1
+	if diff >= math.Pi {
+		diff -= 2 * math.Pi
+	}
+	if diff <= -math.Pi {
+		diff += 2 * math.Pi
+	}
+	return diff
 }
