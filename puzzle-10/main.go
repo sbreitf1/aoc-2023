@@ -1,6 +1,6 @@
 package main
 
-// https://adventofcode.com/2023/day/9
+// https://adventofcode.com/2023/day/10
 
 import (
 	"aoc/helper"
