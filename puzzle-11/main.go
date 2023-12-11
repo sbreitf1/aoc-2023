@@ -138,10 +138,8 @@ func (u *Universe) GetAllShortestPathPairSum() int {
 	var sum int
 	for i := range u.Galaxies {
 		for j := i + 1; j < len(u.Galaxies); j++ {
-			if i != j {
-				length := u.ShortestPathLengthFromTo(u.Galaxies[i], u.Galaxies[j])
-				sum += length
-			}
+			length := u.ShortestPathLengthFromTo(u.Galaxies[i], u.Galaxies[j])
+			sum += length
 		}
 	}
 	return sum
