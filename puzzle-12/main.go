@@ -14,8 +14,8 @@ import (
 )
 
 func main() {
-	cacheDisabled = true
-	file := "example-1.txt"
+	//cacheDisabled = true
+	file := "input.txt"
 	lines := helper.ReadNonEmptyLines(file)
 
 	groups := ParseHotSpringGroups(lines)
@@ -52,10 +52,15 @@ func ParseHotSpringGroups(lines []string) []HotSpringGroup {
 }
 
 func (g HotSpringGroup) CountArrangements() int {
-	return g.findArrangementsRecursive(g.HotSprings, 0, -1, 0)
+	var minRemainingStringLen int
+	for i := range g.DamagedGroups {
+		minRemainingStringLen += g.DamagedGroups[i]
+	}
+	minRemainingStringLen += len(g.DamagedGroups) - 1
+	return g.findArrangementsRecursive(g.HotSprings, 0, -1, 0, minRemainingStringLen)
 }
 
-func (g HotSpringGroup) findArrangementsRecursive(str string, i int, dgPos, damageCount int) int {
+func (g HotSpringGroup) findArrangementsRecursive(str string, i int, dgPos, damageCount int, minRemainingStringLen int) int {
 	if dgPos >= len(g.DamagedGroups) {
 		// not a solution, more damaged groups than expected
 		return 0
@@ -65,39 +70,47 @@ func (g HotSpringGroup) findArrangementsRecursive(str string, i int, dgPos, dama
 		return 0
 	}
 
+	if len(str)-i < minRemainingStringLen {
+		// not enough chars in string remaining to fulfill all damage groups
+		return 0
+	}
+
 	if i >= len(g.HotSprings) {
-		dg := GetDamagedGroups(str)
-		if DamagedGroupsAreEqual(dg, g.DamagedGroups) {
+		if dgPos == (len(g.DamagedGroups)-1) && damageCount == g.DamagedGroups[dgPos] {
 			return 1
 		}
 		return 0
 	}
 	if str[i] == '.' {
-		return g.findArrangementsRecursive(str[:i]+"."+str[i+1:], i+1, dgPos, damageCount)
+		if dgPos >= 0 && str[i-1] == '#' && damageCount != g.DamagedGroups[dgPos] {
+			return 0
+		}
+		return g.findArrangementsRecursive(str[:i]+"."+str[i+1:], i+1, dgPos, damageCount, minRemainingStringLen)
 	}
 	if str[i] == '#' {
-		if i == 0 || str[i-1] == '.' {
-			return g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos+1, 1)
+		if i == 0 {
+			return g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos+1, 1, minRemainingStringLen-2)
+		} else if str[i-1] == '.' {
+			return g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos+1, 1, minRemainingStringLen-2)
 		} else {
-			return g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos, damageCount+1)
+			return g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos, damageCount+1, minRemainingStringLen-1)
 		}
 	}
 
 	result := 0
-	var tryOK, tryDamaged bool
-	tryOK = dgPos < 0 || damageCount >= g.DamagedGroups[dgPos]
-	tryDamaged = true
 
-	if tryOK {
-		result += g.findArrangementsRecursive(str[:i]+"."+str[i+1:], i+1, dgPos, damageCount)
+	if dgPos < 0 || (str[i-1] == '.') || (str[i-1] == '#' && damageCount == g.DamagedGroups[dgPos]) {
+		result += g.findArrangementsRecursive(str[:i]+"."+str[i+1:], i+1, dgPos, damageCount, minRemainingStringLen)
 	}
-	if tryDamaged {
-		if i == 0 || str[i-1] == '.' {
-			result += g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos+1, 1)
-		} else {
-			result += g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos, damageCount+1)
-		}
+
+	if i == 0 {
+		result += g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos+1, 1, minRemainingStringLen-2)
+	} else if str[i-1] == '.' {
+		result += g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos+1, 1, minRemainingStringLen-2)
+	} else {
+		result += g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos, damageCount+1, minRemainingStringLen-1)
 	}
+
 	return result
 }
 
@@ -118,29 +131,6 @@ func (g HotSpringGroup) Unfold(count int) HotSpringGroup {
 		HotSprings:    strings.Repeat("?"+g.HotSprings, count)[1:],
 		DamagedGroups: damagedGroups,
 	}
-}
-
-func GetDamagedGroups(str string) []int {
-	parts := strings.Split(str, ".")
-	dg := make([]int, 0)
-	for _, p := range parts {
-		if len(p) > 0 {
-			dg = append(dg, len(p))
-		}
-	}
-	return dg
-}
-
-func DamagedGroupsAreEqual(dg1, dg2 []int) bool {
-	if len(dg1) != len(dg2) {
-		return false
-	}
-	for i := range dg1 {
-		if dg1[i] != dg2[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func CountArrangements(id string, groups []HotSpringGroup) int {
