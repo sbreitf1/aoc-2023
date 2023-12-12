@@ -4,18 +4,27 @@ package main
 
 import (
 	"aoc/helper"
+	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 )
 
 func main() {
-	lines := helper.ReadNonEmptyLines("input.txt")
+	cacheDisabled = true
+	file := "example-1.txt"
+	lines := helper.ReadNonEmptyLines(file)
 
 	groups := ParseHotSpringGroups(lines)
-	solution1 := CountArrangements(groups)
-
+	solution1 := CountArrangements(file+"_part1", groups)
 	fmt.Println("-> part 1:", solution1)
+
+	unfoldedGroups := UnfoldGroups(groups, 5)
+	solution2 := CountArrangements(file+"_part2", unfoldedGroups)
+	fmt.Println("-> part 2:", solution2)
 }
 
 type HotSpringGroup struct {
@@ -42,25 +51,73 @@ func ParseHotSpringGroups(lines []string) []HotSpringGroup {
 	return groups
 }
 
-func (g HotSpringGroup) FindArrangements() []string {
-	return g.FindArrangementsRecursive(g.HotSprings, 0)
+func (g HotSpringGroup) CountArrangements() int {
+	return g.findArrangementsRecursive(g.HotSprings, 0, -1, 0)
 }
 
-func (g HotSpringGroup) FindArrangementsRecursive(str string, i int) []string {
+func (g HotSpringGroup) findArrangementsRecursive(str string, i int, dgPos, damageCount int) int {
+	if dgPos >= len(g.DamagedGroups) {
+		// not a solution, more damaged groups than expected
+		return 0
+	}
+	if dgPos >= 0 && damageCount > g.DamagedGroups[dgPos] {
+		// not a solution, current damage group does not match expected one
+		return 0
+	}
+
 	if i >= len(g.HotSprings) {
 		dg := GetDamagedGroups(str)
 		if DamagedGroupsAreEqual(dg, g.DamagedGroups) {
-			return []string{str}
+			return 1
 		}
-		return nil
+		return 0
 	}
-	if str[i] == '?' {
-		result := make([]string, 0)
-		result = append(result, g.FindArrangementsRecursive(str[:i]+"."+str[i+1:], i+1)...)
-		result = append(result, g.FindArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1)...)
-		return result
+	if str[i] == '.' {
+		return g.findArrangementsRecursive(str[:i]+"."+str[i+1:], i+1, dgPos, damageCount)
 	}
-	return g.FindArrangementsRecursive(str, i+1)
+	if str[i] == '#' {
+		if i == 0 || str[i-1] == '.' {
+			return g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos+1, 1)
+		} else {
+			return g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos, damageCount+1)
+		}
+	}
+
+	result := 0
+	var tryOK, tryDamaged bool
+	tryOK = dgPos < 0 || damageCount >= g.DamagedGroups[dgPos]
+	tryDamaged = true
+
+	if tryOK {
+		result += g.findArrangementsRecursive(str[:i]+"."+str[i+1:], i+1, dgPos, damageCount)
+	}
+	if tryDamaged {
+		if i == 0 || str[i-1] == '.' {
+			result += g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos+1, 1)
+		} else {
+			result += g.findArrangementsRecursive(str[:i]+"#"+str[i+1:], i+1, dgPos, damageCount+1)
+		}
+	}
+	return result
+}
+
+func UnfoldGroups(groups []HotSpringGroup, count int) []HotSpringGroup {
+	unfoldedGroups := make([]HotSpringGroup, len(groups))
+	for i := range groups {
+		unfoldedGroups[i] = groups[i].Unfold(count)
+	}
+	return unfoldedGroups
+}
+
+func (g HotSpringGroup) Unfold(count int) HotSpringGroup {
+	damagedGroups := make([]int, count*len(g.DamagedGroups))
+	for i := 0; i < count; i++ {
+		copy(damagedGroups[i*len(g.DamagedGroups):(i+1)*len(g.DamagedGroups)], g.DamagedGroups)
+	}
+	return HotSpringGroup{
+		HotSprings:    strings.Repeat("?"+g.HotSprings, count)[1:],
+		DamagedGroups: damagedGroups,
+	}
 }
 
 func GetDamagedGroups(str string) []int {
@@ -86,11 +143,82 @@ func DamagedGroupsAreEqual(dg1, dg2 []int) bool {
 	return true
 }
 
-func CountArrangements(groups []HotSpringGroup) int {
-	count := 0
-	for _, g := range groups {
-		arrangements := g.FindArrangements()
-		count += len(arrangements)
+func CountArrangements(id string, groups []HotSpringGroup) int {
+	var count, doneCount int32
+	var m sync.Mutex
+	var wg sync.WaitGroup
+	for i := range groups {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			var arragementCount int
+			if val, ok := ReadFromCache(id, i); ok {
+				arragementCount = val
+			} else {
+				arragementCount = groups[i].CountArrangements()
+				SetCache(id, i, arragementCount)
+			}
+
+			m.Lock()
+			defer m.Unlock()
+
+			atomic.AddInt32(&count, int32(arragementCount))
+			atomic.AddInt32(&doneCount, 1)
+			fmt.Println(len(groups)-int(doneCount), "remaining")
+		}(i)
 	}
-	return count
+	wg.Wait()
+	return int(count)
+}
+
+var cacheMutex sync.RWMutex
+var cacheDisabled bool
+
+func ReadFromCache(id string, num int) (int, bool) {
+	if cacheDisabled {
+		return 0, false
+	}
+
+	cacheMutex.RLock()
+	defer cacheMutex.RUnlock()
+
+	data, err := os.ReadFile("cache.json")
+	if err != nil {
+		if !os.IsNotExist(err) {
+			helper.ExitOnError(err)
+		}
+		data = []byte("{}")
+	}
+
+	var cache map[string]int
+	helper.ExitOnError(json.Unmarshal(data, &cache))
+
+	key := fmt.Sprintf("%s[%d]", id, num)
+	val, ok := cache[key]
+	return val, ok
+}
+
+func SetCache(id string, num, val int) {
+	cacheMutex.Lock()
+	defer cacheMutex.Unlock()
+
+	data, err := os.ReadFile("cache.json")
+	if err != nil {
+		if !os.IsNotExist(err) {
+			helper.ExitOnError(err)
+		}
+		data = []byte("{}")
+	}
+
+	var cache map[string]int
+	helper.ExitOnError(json.Unmarshal(data, &cache))
+
+	key := fmt.Sprintf("%s[%d]", id, num)
+	cache[key] = val
+
+	data, err = json.MarshalIndent(&cache, "", "  ")
+	helper.ExitOnError(err)
+
+	helper.ExitOnError(os.WriteFile("cache.json", data, os.ModePerm))
 }
