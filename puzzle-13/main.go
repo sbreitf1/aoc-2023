@@ -12,7 +12,9 @@ func main() {
 
 	patterns := ParsePatterns(lines)
 	solution1 := SummarizeReflectionsPart1(patterns)
+	solution2 := SummarizeReflectionsPart2(patterns)
 	fmt.Println("-> part 1:", solution1)
+	fmt.Println("-> part 2:", solution2)
 }
 
 type Pattern struct {
@@ -52,24 +54,20 @@ func (p *Pattern) computeCols() {
 
 func findReflection(arr []string) int {
 	for i := 0; i < len(arr)-1; i++ {
-		if isReflection(arr, i) {
+		if countReflectionSmudges(arr, i) == 0 {
 			return i
 		}
 	}
 	return -1
 }
 
-func isReflection(arr []string, pos int) bool {
-	checkSize := pos
-	if checkSize > (len(arr) - pos - 2) {
-		checkSize = len(arr) - pos - 2
-	}
-	for i := 0; i <= checkSize; i++ {
-		if arr[pos-i] != arr[pos+i+1] {
-			return false
+func findReflectionWithSingleSmudge(arr []string) int {
+	for i := 0; i < len(arr)-1; i++ {
+		if countReflectionSmudges(arr, i) == 1 {
+			return i
 		}
 	}
-	return true
+	return -1
 }
 
 func countReflectionSmudges(arr []string, pos int) int {
@@ -79,8 +77,10 @@ func countReflectionSmudges(arr []string, pos int) int {
 	}
 	var count int
 	for i := 0; i <= checkSize; i++ {
-		if arr[pos-i] != arr[pos+i+1] {
-			count++
+		for j := range arr[pos-i] {
+			if arr[pos-i][j] != arr[pos+i+1][j] {
+				count++
+			}
 		}
 	}
 	return count
@@ -91,6 +91,28 @@ func SummarizeReflectionsPart1(patterns []Pattern) int {
 	for _, p := range patterns {
 		reflectionRow := findReflection(p.Rows)
 		reflectionCol := findReflection(p.Cols)
+		if reflectionRow >= 0 && reflectionCol >= 0 {
+			helper.ExitWithMessage("both row and col reflection detected")
+		}
+		if reflectionRow < 0 && reflectionCol < 0 {
+			helper.ExitWithMessage("no reflection detected")
+		}
+
+		if reflectionCol >= 0 {
+			sum += reflectionCol + 1
+		}
+		if reflectionRow >= 0 {
+			sum += 100 * (reflectionRow + 1)
+		}
+	}
+	return sum
+}
+
+func SummarizeReflectionsPart2(patterns []Pattern) int {
+	var sum int
+	for _, p := range patterns {
+		reflectionRow := findReflectionWithSingleSmudge(p.Rows)
+		reflectionCol := findReflectionWithSingleSmudge(p.Cols)
 		if reflectionRow >= 0 && reflectionCol >= 0 {
 			helper.ExitWithMessage("both row and col reflection detected")
 		}
