@@ -17,6 +17,9 @@ func main() {
 	groups := ParseHotSpringGroups(lines)
 	solution1 := CountArrangements(groups)
 	fmt.Println("-> part 1:", solution1)
+	if solution1 != 7163 {
+		helper.ExitWithMessage("solution 1 is wrong")
+	}
 
 	unfoldedGroups := UnfoldGroups(groups, 5)
 	solution2 := CountArrangements(unfoldedGroups)
@@ -48,56 +51,76 @@ func ParseHotSpringGroups(lines []string) []HotSpringGroup {
 }
 
 func (g HotSpringGroup) CountArrangements() uint64 {
-	var minRequiredLen int
+	var damageSumToPlace int
 	for i := range g.DamagedGroups {
-		minRequiredLen += g.DamagedGroups[i]
+		damageSumToPlace += g.DamagedGroups[i]
 	}
-	minRequiredLen += len(g.DamagedGroups)
+	okSumToPlace := len(g.DamagedGroups)
 	str := g.HotSprings + "."
-	followingDamageCounts := make([]int, len(str))
-	followingAnyCounts := make([]int, len(str))
-	for i := len(str) - 2; i >= 0; i-- {
+	positions := make([]Pos, len(str))
+	for i := len(str) - 1; i >= 0; i-- {
+		positions[i].Rune = rune(str[i])
+		if i < (len(str) - 1) {
+			positions[i].FollowingDamageCount = positions[i+1].FollowingDamageCount
+			positions[i].FollowingOKCount = positions[i+1].FollowingOKCount
+			positions[i].FollowingAnyCount = positions[i+1].FollowingAnyCount
+		}
 		if str[i] == '#' {
-			followingDamageCounts[i] = followingDamageCounts[i+1] + 1
-		} else {
-			followingDamageCounts[i] = followingDamageCounts[i+1]
+			positions[i].FollowingDamageCount++
+		}
+		if str[i] == '.' {
+			positions[i].FollowingOKCount++
 		}
 		if str[i] == '?' {
-			followingAnyCounts[i] = followingAnyCounts[i+1] + 1
-		} else {
-			followingAnyCounts[i] = followingAnyCounts[i+1]
+			positions[i].FollowingAnyCount++
 		}
 	}
-	return findArrangementsRecursive(str, followingDamageCounts, followingAnyCounts, g.DamagedGroups, minRequiredLen)
+	return findArrangementsRecursive(positions, g.DamagedGroups, damageSumToPlace, okSumToPlace)
 }
 
-func findArrangementsRecursive(str string, followingDamageCounts, followingAnyCounts []int, dgPlace []int, minRequiredLen int) uint64 {
+type Pos struct {
+	Rune                 rune
+	FollowingAnyCount    int
+	FollowingOKCount     int
+	FollowingDamageCount int
+}
+
+func findArrangementsRecursive(positions []Pos, dgPlace []int, damageSumToPlace, okSumToPlace int) uint64 {
 	if len(dgPlace) == 0 {
-		if len(followingDamageCounts) == 0 || followingDamageCounts[0] == 0 {
+		if len(positions) == 0 || positions[0].FollowingDamageCount == 0 {
 			return 1
 		} else {
 			return 0
 		}
 	}
-	if len(str) < minRequiredLen {
+	if len(positions) == 0 {
+		return 0
+	}
+	if (positions[0].FollowingDamageCount + positions[0].FollowingAnyCount) < damageSumToPlace {
+		return 0
+	}
+	if (positions[0].FollowingOKCount + positions[0].FollowingAnyCount) < okSumToPlace {
+		return 0
+	}
+	if (positions[0].FollowingOKCount + positions[0].FollowingDamageCount + positions[0].FollowingAnyCount) < (okSumToPlace + damageSumToPlace) {
 		return 0
 	}
 
 	var result uint64
-	for i := 0; i < len(str)-minRequiredLen+1; i++ {
+	for i := 0; i < len(positions)-(damageSumToPlace+okSumToPlace)+1; i++ {
 		// check placement possible
 		canPlace := true
 		for j := 0; j < dgPlace[0]; j++ {
-			if str[i+j] == '.' {
+			if positions[i+j].Rune == '.' {
 				canPlace = false
 				break
 			}
 		}
-		if canPlace && str[i+dgPlace[0]] != '#' {
-			result += findArrangementsRecursive(str[i+dgPlace[0]+1:], followingDamageCounts[i+dgPlace[0]+1:], followingAnyCounts[i+dgPlace[0]+1:], dgPlace[1:], minRequiredLen-dgPlace[0]-1)
+		if canPlace && positions[i+dgPlace[0]].Rune != '#' {
+			result += findArrangementsRecursive(positions[i+dgPlace[0]+1:], dgPlace[1:], damageSumToPlace-dgPlace[0], okSumToPlace-1)
 		}
 
-		if str[i] == '#' {
+		if positions[i].Rune == '#' {
 			break
 		}
 	}
