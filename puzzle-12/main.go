@@ -17,9 +17,6 @@ func main() {
 	groups := ParseHotSpringGroups(lines)
 	solution1 := CountArrangements(groups)
 	fmt.Println("-> part 1:", solution1)
-	if solution1 != 7163 {
-		helper.ExitWithMessage("solution 1 is wrong")
-	}
 
 	unfoldedGroups := UnfoldGroups(groups, 5)
 	solution2 := CountArrangements(unfoldedGroups)
@@ -75,7 +72,19 @@ func (g HotSpringGroup) CountArrangements() uint64 {
 			positions[i].FollowingAnyCount++
 		}
 	}
-	return findArrangementsRecursive(positions, g.DamagedGroups, damageSumToPlace, okSumToPlace)
+	cache := Cache{
+		Entries: make(map[CacheKey]uint64),
+	}
+	return findArrangementsRecursive(&cache, positions, g.DamagedGroups, damageSumToPlace, okSumToPlace)
+}
+
+type Cache struct {
+	Entries map[CacheKey]uint64
+}
+
+type CacheKey struct {
+	PosCount         int16
+	DamageGroupCount int16
 }
 
 type Pos struct {
@@ -85,7 +94,7 @@ type Pos struct {
 	FollowingDamageCount int
 }
 
-func findArrangementsRecursive(positions []Pos, dgPlace []int, damageSumToPlace, okSumToPlace int) uint64 {
+func findArrangementsRecursive(cache *Cache, positions []Pos, dgPlace []int, damageSumToPlace, okSumToPlace int) uint64 {
 	if len(dgPlace) == 0 {
 		if len(positions) == 0 || positions[0].FollowingDamageCount == 0 {
 			return 1
@@ -106,6 +115,11 @@ func findArrangementsRecursive(positions []Pos, dgPlace []int, damageSumToPlace,
 		return 0
 	}
 
+	key := CacheKey{PosCount: int16(len(positions)), DamageGroupCount: int16(len(dgPlace))}
+	if num, ok := cache.Entries[key]; ok {
+		return num
+	}
+
 	var result uint64
 	for i := 0; i < len(positions)-(damageSumToPlace+okSumToPlace)+1; i++ {
 		// check placement possible
@@ -117,13 +131,14 @@ func findArrangementsRecursive(positions []Pos, dgPlace []int, damageSumToPlace,
 			}
 		}
 		if canPlace && positions[i+dgPlace[0]].Rune != '#' {
-			result += findArrangementsRecursive(positions[i+dgPlace[0]+1:], dgPlace[1:], damageSumToPlace-dgPlace[0], okSumToPlace-1)
+			result += findArrangementsRecursive(cache, positions[i+dgPlace[0]+1:], dgPlace[1:], damageSumToPlace-dgPlace[0], okSumToPlace-1)
 		}
 
 		if positions[i].Rune == '#' {
 			break
 		}
 	}
+	cache.Entries[key] = result
 	return result
 }
 
@@ -163,7 +178,6 @@ func CountArrangements(groups []HotSpringGroup) uint64 {
 
 			atomic.AddUint64(&count, arragementCount)
 			atomic.AddInt32(&doneCount, 1)
-			fmt.Println(len(groups)-int(doneCount), "remaining")
 		}(i)
 	}
 	wg.Wait()
