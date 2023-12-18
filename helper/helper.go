@@ -89,3 +89,18 @@ func (p Point2D) Neg() Point2D {
 func (p Point2D) Mul(factor int) Point2D {
 	return Point2D{X: p.X * factor, Y: p.Y * factor}
 }
+
+func GetReversedSlice[T any](arr []T) []T {
+	arr2 := make([]T, len(arr))
+	copy(arr2, arr)
+	ReverseSlice(arr2)
+	return arr2
+}
+
+func ReverseSlice[T any](arr []T) {
+	for i := 0; i < len(arr)/2; i++ {
+		tmp := arr[i]
+		arr[i] = arr[len(arr)-i-1]
+		arr[len(arr)-i-1] = tmp
+	}
+}
