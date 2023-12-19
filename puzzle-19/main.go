@@ -18,6 +18,13 @@ func main() {
 	solution1 := SumCategoryValues(acceptedParts)
 	fmt.Println("-> part 1:", solution1)
 
+	solution2 := system.CountAcceptedValues(PartRange{Categories: map[rune]ValRange{
+		'x': {Min: 1, Max: 4000},
+		'm': {Min: 1, Max: 4000},
+		'a': {Min: 1, Max: 4000},
+		's': {Min: 1, Max: 4000},
+	}})
+	fmt.Println("-> part 2:", solution2)
 }
 
 type System struct {
@@ -31,12 +38,12 @@ type Workflow struct {
 type Rule struct {
 	Category     rune
 	Operator     rune
-	Value        int
+	Value        int64
 	NextWorkflow string
 }
 
 type PartRating struct {
-	Categories map[rune]int
+	Categories map[rune]int64
 }
 
 func ParseInput(lines []string) (System, []PartRating) {
@@ -57,7 +64,7 @@ func ParseInput(lines []string) (System, []PartRating) {
 					rules = append(rules, Rule{
 						Category:     rune(m[1][0]),
 						Operator:     rune(m[2][0]),
-						Value:        val,
+						Value:        int64(val),
 						NextWorkflow: m[4],
 					})
 				} else {
@@ -68,11 +75,11 @@ func ParseInput(lines []string) (System, []PartRating) {
 
 		} else if m := patternPart.FindStringSubmatch(line); len(m) == 2 {
 			parts := strings.Split(m[1], ",")
-			categories := make(map[rune]int)
+			categories := make(map[rune]int64)
 			for _, p := range parts {
 				if m := patternPartRating.FindStringSubmatch(p); len(m) == 3 {
 					val, _ := strconv.Atoi(m[2])
-					categories[rune(m[1][0])] = val
+					categories[rune(m[1][0])] = int64(val)
 				}
 			}
 			partRatings = append(partRatings, PartRating{Categories: categories})
@@ -81,8 +88,8 @@ func ParseInput(lines []string) (System, []PartRating) {
 	return System{Workflows: workflows}, partRatings
 }
 
-func SumCategoryValues(parts []PartRating) int {
-	var sum int
+func SumCategoryValues(parts []PartRating) int64 {
+	var sum int64
 	for _, p := range parts {
 		for _, val := range p.Categories {
 			sum += val
@@ -138,4 +145,79 @@ func (r Rule) Matches(p PartRating) bool {
 	}
 	helper.ExitWithMessage("operator %q not supported", r.Operator)
 	return false
+}
+
+type PartRange struct {
+	Categories map[rune]ValRange
+}
+
+func (p PartRange) Size() int64 {
+	if p.Categories == nil || len(p.Categories) == 0 {
+		return 0
+	}
+	size := int64(1)
+	for _, r := range p.Categories {
+		if r.Max < r.Min {
+			return 0
+		}
+		size *= (r.Max - r.Min + 1)
+	}
+	return size
+}
+
+type RangeMapping struct {
+	Range        PartRange
+	NextWorkflow string
+}
+
+type ValRange struct {
+	Min, Max int64
+}
+
+func (s System) CountAcceptedValues(partRange PartRange) int64 {
+	return s.CountAcceptedValuesOfWorkflow(partRange, "in")
+}
+
+func (s System) CountAcceptedValuesOfWorkflow(partRange PartRange, workflow string) int64 {
+	if workflow == "A" {
+		return partRange.Size()
+	}
+	if workflow == "R" {
+		return 0
+	}
+
+	var acceptedCount int64
+	w := s.Workflows[workflow]
+	for _, r := range w.Rules {
+		matching, remainder := r.CutRange(partRange)
+		if matching.Size() > 0 {
+			acceptedCount += s.CountAcceptedValuesOfWorkflow(matching, r.NextWorkflow)
+		}
+		if remainder.Size() < 0 {
+			break
+		}
+		partRange = remainder
+	}
+	return acceptedCount
+}
+
+func (r Rule) CutRange(partRange PartRange) (PartRange, PartRange) {
+	if r.Category == 0 || r.Operator == 0 {
+		return partRange, PartRange{}
+	}
+
+	matchingCategories := helper.CloneMap(partRange.Categories)
+	remainderCategories := helper.CloneMap(partRange.Categories)
+	if r.Operator == '<' {
+		matchingCategories[r.Category] = ValRange{partRange.Categories[r.Category].Min, r.Value - 1}
+		remainderCategories[r.Category] = ValRange{r.Value, partRange.Categories[r.Category].Max}
+		return PartRange{matchingCategories}, PartRange{remainderCategories}
+	}
+	if r.Operator == '>' {
+		matchingCategories[r.Category] = ValRange{r.Value + 1, partRange.Categories[r.Category].Max}
+		remainderCategories[r.Category] = ValRange{partRange.Categories[r.Category].Min, r.Value}
+		return PartRange{matchingCategories}, PartRange{remainderCategories}
+	}
+	helper.ExitWithMessage("operator %q not supported", r.Operator)
+	return PartRange{}, PartRange{}
 }
