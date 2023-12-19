@@ -12,10 +12,15 @@ func main() {
 	lines := helper.ReadNonEmptyLines("input.txt")
 
 	board := ParseBoard(lines)
-	path := board.FindPath(helper.Point2D{X: 0, Y: 0}, helper.Point2D{X: board.Width - 1, Y: board.Height - 1})
-	PrintPath(board, path)
-	solution1 := board.GetPathHeatLoss(path)
+	path1 := board.FindPath(helper.Point2D{X: 0, Y: 0}, helper.Point2D{X: board.Width - 1, Y: board.Height - 1}, 1, 3)
+	//PrintPath(board, path1)
+	solution1 := board.GetPathHeatLoss(path1)
 	fmt.Println("-> part 1:", solution1)
+
+	path2 := board.FindPath(helper.Point2D{X: 0, Y: 0}, helper.Point2D{X: board.Width - 1, Y: board.Height - 1}, 4, 10)
+	//PrintPath(board, path2)
+	solution2 := board.GetPathHeatLoss(path2)
+	fmt.Println("-> part 2:", solution2)
 }
 
 type Board struct {
@@ -45,7 +50,7 @@ type PathPoint struct {
 	SameDirStepCount int
 }
 
-func (b *Board) FindPath(from, to helper.Point2D) []helper.Point2D {
+func (b *Board) FindPath(from, to helper.Point2D, minDist, maxDist int) []helper.Point2D {
 	type VisitKey struct {
 		Pos              helper.Point2D
 		InDir            helper.Point2D
@@ -75,9 +80,6 @@ func (b *Board) FindPath(from, to helper.Point2D) []helper.Point2D {
 		}
 
 		vkey := VisitKey{Pos: currentPoint.Pos, InDir: inDir, SameDirStepCount: currentPoint.SameDirStepCount}
-		if delKey != vkey {
-			fmt.Println(delKey, vkey)
-		}
 
 		if v, ok := visited[vkey]; ok {
 			if currentPoint.TotalCost < v.TotalCost {
@@ -87,19 +89,25 @@ func (b *Board) FindPath(from, to helper.Point2D) []helper.Point2D {
 		}
 		visited[vkey] = currentPoint
 
-		if currentPoint.Pos == to {
+		if currentPoint.Pos == to && currentPoint.SameDirStepCount >= minDist {
 			if bestEndPos == nil || currentPoint.TotalCost < bestEndPos.TotalCost {
 				bestEndPos = currentPoint
 			}
 		}
 
 		for _, nextDir := range []helper.Point2D{{X: 0, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: -1}, {X: -1, Y: 0}} {
-			if nextDir == inDir && currentPoint.SameDirStepCount >= 3 {
+			if nextDir == inDir {
+				if currentPoint.SameDirStepCount >= maxDist {
+					continue
+				}
+			} else if nextDir == inDir.Neg() {
 				continue
-			}
-
-			if nextDir == inDir.Neg() {
-				continue
+			} else if (inDir == helper.Point2D{}) {
+				// accept
+			} else {
+				if currentPoint.SameDirStepCount < minDist {
+					continue
+				}
 			}
 
 			nextPos := currentPoint.Pos.Add(nextDir)
@@ -147,7 +155,6 @@ func (b *Board) FindPath(from, to helper.Point2D) []helper.Point2D {
 }
 
 func (b *Board) GetPathHeatLoss(path []helper.Point2D) int {
-	fmt.Println(path)
 	var heatLoss int
 	for i := 1; i < len(path); i++ {
 		heatLoss += b.Tiles[path[i].Y][path[i].X]
