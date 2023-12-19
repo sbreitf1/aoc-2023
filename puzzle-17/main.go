@@ -4,6 +4,7 @@ package main
 
 import (
 	"aoc/helper"
+	"container/heap"
 	"fmt"
 	"strings"
 )
@@ -56,23 +57,21 @@ func (b *Board) FindPath(from, to helper.Point2D, minDist, maxDist int) []helper
 		InDir            helper.Point2D
 		SameDirStepCount int
 	}
-	nextValues := map[VisitKey]*PathPoint{
-		{Pos: from, SameDirStepCount: 1}: {Pos: from, Previous: nil, TotalCost: 0, SameDirStepCount: 1},
+	nextValues := PriorityQueue{
+		&Item{
+			value:    &PathPoint{Pos: from, Previous: nil, TotalCost: 0, SameDirStepCount: 1},
+			priority: 0,
+			index:    0,
+		},
 	}
+	heap.Init(&nextValues)
 	visited := map[VisitKey]*PathPoint{}
 
 	var bestEndPos *PathPoint
 
 	for len(nextValues) > 0 {
-		var currentPoint *PathPoint
-		var delKey VisitKey
-		for k, p := range nextValues {
-			if currentPoint == nil || p.TotalCost < currentPoint.TotalCost {
-				currentPoint = p
-				delKey = k
-			}
-		}
-		delete(nextValues, delKey)
+		currentItem := heap.Pop(&nextValues).(*Item)
+		currentPoint := currentItem.value
 
 		var inDir helper.Point2D
 		if currentPoint.Previous != nil {
@@ -133,13 +132,7 @@ func (b *Board) FindPath(from, to helper.Point2D, minDist, maxDist int) []helper
 				TotalCost:        currentPoint.TotalCost + b.Tiles[nextPos.Y][nextPos.X],
 				SameDirStepCount: nextSameDirStepCount,
 			}
-			if alreadyEnqueuedPoint, ok := nextValues[vkeyNext]; ok {
-				if nextPoint.TotalCost < alreadyEnqueuedPoint.TotalCost {
-					nextValues[vkeyNext] = &nextPoint
-				}
-			} else {
-				nextValues[vkeyNext] = &nextPoint
-			}
+			heap.Push(&nextValues, &Item{value: &nextPoint, priority: nextPoint.TotalCost})
 		}
 	}
 
