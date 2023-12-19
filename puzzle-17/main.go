@@ -5,24 +5,16 @@ package main
 import (
 	"aoc/helper"
 	"fmt"
-	"sort"
 	"strings"
 )
 
-const (
-	MaxInt int = 20000000
-)
-
 func main() {
-	lines := helper.ReadNonEmptyLines("example-1.txt")
+	lines := helper.ReadNonEmptyLines("input.txt")
 
 	board := ParseBoard(lines)
-	result1 := board.FindMinPathCost(helper.Point2D{X: 0, Y: 0}, helper.Point2D{X: board.Width - 1, Y: board.Height - 1})
-	PrintPath(board, result1.Path)
-	solution1 := result1.Cost
-	//path := board.FindPath(helper.Point2D{X: 0, Y: 0}, helper.Point2D{X: board.Width - 1, Y: board.Height - 1})
-	//PrintPath(board, path)
-	//solution1 := board.GetPathHeatLoss(path)
+	path := board.FindPath(helper.Point2D{X: 0, Y: 0}, helper.Point2D{X: board.Width - 1, Y: board.Height - 1})
+	PrintPath(board, path)
+	solution1 := board.GetPathHeatLoss(path)
 	fmt.Println("-> part 1:", solution1)
 }
 
@@ -46,107 +38,6 @@ func ParseBoard(lines []string) *Board {
 	}
 }
 
-func (b *Board) FindMinPathCost(from, to helper.Point2D) Result {
-	cache := Cache{
-		Visiting:     make(map[CacheKey]bool),
-		KnownResults: make(map[CacheKey]Result),
-	}
-	return b.findMinPathCost(&cache, from, to, helper.Point2D{}, 1)
-}
-
-type Cache struct {
-	Visiting     map[CacheKey]bool
-	KnownResults map[CacheKey]Result
-}
-
-type CacheKey struct {
-	Pos              helper.Point2D
-	PreviousDir      helper.Point2D
-	PreviousDirCount int
-}
-
-type Result struct {
-	Cost int
-	Path []helper.Point2D
-}
-
-func (b *Board) findMinPathCost(cache *Cache, from, to helper.Point2D, previousDir helper.Point2D, previousDirCount int) Result {
-	if from.X < 0 || from.Y < 0 || from.X >= b.Width || from.Y >= b.Height {
-		return Result{MaxInt, nil}
-	}
-	if from == to {
-		return Result{b.Tiles[from.Y][from.X], []helper.Point2D{to}}
-	}
-
-	key := CacheKey{
-		Pos:              from,
-		PreviousDir:      previousDir,
-		PreviousDirCount: previousDirCount,
-	}
-	if knownResult, ok := cache.KnownResults[key]; ok {
-		return knownResult
-	}
-
-	if ok := cache.Visiting[key]; ok {
-		return Result{MaxInt, nil}
-	}
-	cache.Visiting[key] = true
-
-	nextDirs := make([]helper.Point2D, 0, 3)
-	for _, nextDir := range []helper.Point2D{{X: 0, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: -1}, {X: -1, Y: 0}} {
-		if nextDir == previousDir && previousDirCount >= 3 {
-			continue
-		}
-
-		if nextDir == previousDir.Neg() {
-			continue
-		}
-
-		nextPos := from.Add(nextDir)
-		if nextPos.X < 0 || nextPos.Y < 0 || nextPos.X >= b.Width || nextPos.Y >= b.Height {
-			continue
-		}
-
-		nextDirs = append(nextDirs, nextDir)
-	}
-	sort.Slice(nextDirs, func(i, j int) bool {
-		return b.Tiles[from.Y+nextDirs[i].Y][from.X+nextDirs[i].X] < b.Tiles[from.Y+nextDirs[j].Y][from.X+nextDirs[j].X]
-	})
-
-	result := Result{MaxInt, nil}
-	for _, nextDir := range nextDirs {
-		if nextDir == previousDir && previousDirCount >= 3 {
-			continue
-		}
-
-		if nextDir == previousDir.Neg() {
-			continue
-		}
-
-		nextPos := from.Add(nextDir)
-		if nextPos.X < 0 || nextPos.Y < 0 || nextPos.X >= b.Width || nextPos.Y >= b.Height {
-			continue
-		}
-
-		var nextSameDirStepCount int
-		if nextDir == previousDir {
-			nextSameDirStepCount = previousDirCount + 1
-		} else {
-			nextSameDirStepCount = 1
-		}
-
-		nextResult := b.findMinPathCost(cache, nextPos, to, nextDir, nextSameDirStepCount)
-		if nextResult.Cost < result.Cost {
-			result = nextResult
-		}
-	}
-	result.Cost += b.Tiles[from.Y][from.X]
-	result.Path = append([]helper.Point2D{from}, result.Path...)
-	cache.KnownResults[key] = result
-	cache.Visiting[key] = false
-	return result
-}
-
 type PathPoint struct {
 	Previous         *PathPoint
 	Pos              helper.Point2D
@@ -155,38 +46,59 @@ type PathPoint struct {
 }
 
 func (b *Board) FindPath(from, to helper.Point2D) []helper.Point2D {
-	nextValues := map[helper.Point2D]*PathPoint{
-		{X: 0, Y: 0}: {Pos: helper.Point2D{X: 0, Y: 0}, Previous: nil, TotalCost: 0, SameDirStepCount: 1},
+	type VisitKey struct {
+		Pos              helper.Point2D
+		InDir            helper.Point2D
+		SameDirStepCount int
 	}
-	visited := map[helper.Point2D]*PathPoint{}
+	nextValues := map[VisitKey]*PathPoint{
+		{Pos: from, SameDirStepCount: 1}: {Pos: from, Previous: nil, TotalCost: 0, SameDirStepCount: 1},
+	}
+	visited := map[VisitKey]*PathPoint{}
+
+	var bestEndPos *PathPoint
 
 	for len(nextValues) > 0 {
 		var currentPoint *PathPoint
-		for _, p := range nextValues {
+		var delKey VisitKey
+		for k, p := range nextValues {
 			if currentPoint == nil || p.TotalCost < currentPoint.TotalCost {
 				currentPoint = p
+				delKey = k
 			}
 		}
-		delete(nextValues, currentPoint.Pos)
+		delete(nextValues, delKey)
 
-		if v, ok := visited[currentPoint.Pos]; ok {
+		var inDir helper.Point2D
+		if currentPoint.Previous != nil {
+			inDir = currentPoint.Pos.Sub(currentPoint.Previous.Pos)
+		}
+
+		vkey := VisitKey{Pos: currentPoint.Pos, InDir: inDir, SameDirStepCount: currentPoint.SameDirStepCount}
+		if delKey != vkey {
+			fmt.Println(delKey, vkey)
+		}
+
+		if v, ok := visited[vkey]; ok {
 			if currentPoint.TotalCost < v.TotalCost {
 				helper.ExitWithMessage("found better way to %v (%d -> %d)", currentPoint.Pos, v.TotalCost, currentPoint.TotalCost)
 			}
 			continue
 		}
-		visited[currentPoint.Pos] = currentPoint
+		visited[vkey] = currentPoint
 
-		var previousDir helper.Point2D
-		if currentPoint.Previous != nil {
-			previousDir = currentPoint.Pos.Sub(currentPoint.Previous.Pos)
+		if currentPoint.Pos == to {
+			if bestEndPos == nil || currentPoint.TotalCost < bestEndPos.TotalCost {
+				bestEndPos = currentPoint
+			}
 		}
+
 		for _, nextDir := range []helper.Point2D{{X: 0, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: -1}, {X: -1, Y: 0}} {
-			if nextDir == previousDir && currentPoint.SameDirStepCount >= 3 {
+			if nextDir == inDir && currentPoint.SameDirStepCount >= 3 {
 				continue
 			}
 
-			if nextDir == previousDir.Neg() {
+			if nextDir == inDir.Neg() {
 				continue
 			}
 
@@ -195,15 +107,16 @@ func (b *Board) FindPath(from, to helper.Point2D) []helper.Point2D {
 				continue
 			}
 
-			if _, ok := visited[nextPos]; ok {
-				continue
-			}
-
 			var nextSameDirStepCount int
-			if nextDir == previousDir {
+			if nextDir == inDir {
 				nextSameDirStepCount = currentPoint.SameDirStepCount + 1
 			} else {
 				nextSameDirStepCount = 1
+			}
+
+			vkeyNext := VisitKey{Pos: nextPos, InDir: nextDir, SameDirStepCount: nextSameDirStepCount}
+			if _, ok := visited[vkeyNext]; ok {
+				continue
 			}
 
 			nextPoint := PathPoint{
@@ -212,35 +125,29 @@ func (b *Board) FindPath(from, to helper.Point2D) []helper.Point2D {
 				TotalCost:        currentPoint.TotalCost + b.Tiles[nextPos.Y][nextPos.X],
 				SameDirStepCount: nextSameDirStepCount,
 			}
-			if alreadyEnqueuedPoint, ok := nextValues[nextPos]; ok {
+			if alreadyEnqueuedPoint, ok := nextValues[vkeyNext]; ok {
 				if nextPoint.TotalCost < alreadyEnqueuedPoint.TotalCost {
-					nextValues[nextPoint.Pos] = &nextPoint
+					nextValues[vkeyNext] = &nextPoint
 				}
 			} else {
-				nextValues[nextPoint.Pos] = &nextPoint
+				nextValues[vkeyNext] = &nextPoint
 			}
 		}
 	}
 
-	endPos, ok := visited[to]
-	if !ok {
+	if bestEndPos == nil {
 		helper.ExitWithMessage("no path from %v to %v found", from, to)
 	}
 
-	path := []helper.Point2D{endPos.Pos}
-	for {
-		pp := visited[path[0]]
-		if pp.Previous == nil {
-			break
-		}
-		fmt.Println(pp)
-		path = append([]helper.Point2D{pp.Previous.Pos}, path...)
+	path := []helper.Point2D{}
+	for current := bestEndPos; current != nil; current = current.Previous {
+		path = append([]helper.Point2D{current.Pos}, path...)
 	}
-	fmt.Println(path)
 	return path
 }
 
 func (b *Board) GetPathHeatLoss(path []helper.Point2D) int {
+	fmt.Println(path)
 	var heatLoss int
 	for i := 1; i < len(path); i++ {
 		heatLoss += b.Tiles[path[i].Y][path[i].X]
