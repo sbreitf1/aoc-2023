@@ -4,7 +4,6 @@ package main
 
 import (
 	"aoc/helper"
-	"container/heap"
 	"fmt"
 	"strings"
 )
@@ -57,21 +56,14 @@ func (b *Board) FindPath(from, to helper.Point2D, minDist, maxDist int) []helper
 		InDir            helper.Point2D
 		SameDirStepCount int
 	}
-	nextValues := PriorityQueue{
-		&Item{
-			value:    &PathPoint{Pos: from, Previous: nil, TotalCost: 0, SameDirStepCount: 1},
-			priority: 0,
-			index:    0,
-		},
-	}
-	heap.Init(&nextValues)
+	nextValues := helper.MakePriorityQueue[int, *PathPoint]()
+	nextValues.Push(0, &PathPoint{Pos: from, Previous: nil, TotalCost: 0, SameDirStepCount: 1})
 	visited := map[VisitKey]*PathPoint{}
 
 	var bestEndPos *PathPoint
 
-	for len(nextValues) > 0 {
-		currentItem := heap.Pop(&nextValues).(*Item)
-		currentPoint := currentItem.value
+	for nextValues.Len() > 0 {
+		currentPoint, _ := nextValues.Pop()
 
 		var inDir helper.Point2D
 		if currentPoint.Previous != nil {
@@ -132,7 +124,7 @@ func (b *Board) FindPath(from, to helper.Point2D, minDist, maxDist int) []helper
 				TotalCost:        currentPoint.TotalCost + b.Tiles[nextPos.Y][nextPos.X],
 				SameDirStepCount: nextSameDirStepCount,
 			}
-			heap.Push(&nextValues, &Item{value: &nextPoint, priority: nextPoint.TotalCost})
+			nextValues.Push(nextPoint.TotalCost, &nextPoint)
 		}
 	}
 
