@@ -1,5 +1,7 @@
 package helper
 
+import "sort"
+
 func GetReversedSlice[T any](arr []T) []T {
 	arr2 := make([]T, len(arr))
 	copy(arr2, arr)
@@ -21,4 +23,17 @@ func CloneMap[K comparable, V any](src map[K]V) map[K]V {
 		dst[k] = v
 	}
 	return dst
+}
+
+func IterateMapInKeyOrder[K Ordered, V any](m map[K]V, f func(k K, v V)) {
+	keys := make([]K, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	for _, k := range keys {
+		f(k, m[k])
+	}
 }
