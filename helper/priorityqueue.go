@@ -2,17 +2,19 @@ package helper
 
 import (
 	"container/heap"
-
-	"golang.org/x/exp/constraints"
 )
 
 // inspired by https://pkg.go.dev/container/heap#example-package-PriorityQueue
 
-type PriorityQueue[P constraints.Ordered, T any] struct {
+type Ordered interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr | ~float32 | ~float64 | ~string
+}
+
+type PriorityQueue[P Ordered, T any] struct {
 	items priorityQueueItemList[P, T]
 }
 
-func MakePriorityQueue[P constraints.Ordered, T any]() *PriorityQueue[P, T] {
+func MakePriorityQueue[P Ordered, T any]() *PriorityQueue[P, T] {
 	return &PriorityQueue[P, T]{}
 }
 
@@ -29,13 +31,13 @@ func (pq *PriorityQueue[P, T]) Len() int {
 	return pq.items.Len()
 }
 
-type priorityQueueItem[P constraints.Ordered, T any] struct {
+type priorityQueueItem[P Ordered, T any] struct {
 	Object   T
 	Priority P
 	Index    int
 }
 
-type priorityQueueItemList[P constraints.Ordered, T any] []*priorityQueueItem[P, T]
+type priorityQueueItemList[P Ordered, T any] []*priorityQueueItem[P, T]
 
 func (pq priorityQueueItemList[P, T]) Len() int { return len(pq) }
 
