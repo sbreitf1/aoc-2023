@@ -22,6 +22,9 @@ func main() {
 	desintegratableBricks := world.GetDesintegratableBricks()
 	solution1 := len(desintegratableBricks)
 	fmt.Println("-> part 1:", solution1)
+
+	solution2 := world.ComputePart2()
+	fmt.Println("-> part 2:", solution2)
 }
 
 func ParseWorld(lines []string) *World {
@@ -133,32 +136,72 @@ func BricksCollide(b1, b2 Brick) bool {
 func (w *World) GetDesintegratableBricks() []int {
 	bricks := make([]int, 0)
 	for i := range w.Bricks {
-		if w.CanDesintegrateBrick(i) {
+		if len(w.GetBricksOnlySupportedBy(i)) == 0 {
 			bricks = append(bricks, i)
 		}
 	}
 	return bricks
 }
 
-func (w *World) CanDesintegrateBrick(index int) bool {
-	w.Bricks[index].Move(dirUp)
-	supportedBricks := w.GetCollidingBricks(index)
-	w.Bricks[index].Move(dirDown)
+func (w *World) GetBricksOnlySupportedBy(index int) []int {
+	supportedBricks := w.GetSupportedBricks(index)
 
 	if len(supportedBricks) == 0 {
 		// no bricks supported by this brick
-		return true
+		return []int{}
 	}
 
 	// check whether this brick is the only support of the other bricks
+	onlySupportedBy := make([]int, 0)
 	for _, sbi := range supportedBricks {
-		w.Bricks[sbi].Move(dirDown)
-		supportCount := len(w.GetCollidingBricks(sbi))
-		w.Bricks[sbi].Move(dirUp)
+		supportCount := len(w.GetSupportingBricks(sbi))
 		if supportCount == 1 {
 			// this brick is the only support, cannot remove
-			return false
+			onlySupportedBy = append(onlySupportedBy, sbi)
 		}
 	}
-	return true
+	return onlySupportedBy
+}
+
+func (w *World) GetSupportedBricks(index int) []int {
+	w.Bricks[index].Move(dirUp)
+	supportedBricks := w.GetCollidingBricks(index)
+	w.Bricks[index].Move(dirDown)
+	return supportedBricks
+}
+
+func (w *World) GetSupportingBricks(index int) []int {
+	w.Bricks[index].Move(dirDown)
+	supportingBricks := w.GetCollidingBricks(index)
+	w.Bricks[index].Move(dirUp)
+	return supportingBricks
+}
+
+func (w *World) ComputePart2() int {
+	var sum int
+	for i := range w.Bricks {
+		affectedBricks := map[int]bool{}
+		w.CountBricksThatWouldFall(i, affectedBricks)
+		count := len(affectedBricks) - 1
+		sum += count
+	}
+	return sum
+}
+
+func (w *World) CountBricksThatWouldFall(index int, affectedBricks map[int]bool) {
+	affectedBricks[index] = true
+
+	supportedBricks := w.GetSupportedBricks(index)
+	for _, i := range supportedBricks {
+		supportingBricks := w.GetSupportingBricks(i)
+		supportedByNotAffectedBrick := false
+		for _, sbi := range supportingBricks {
+			if !affectedBricks[sbi] {
+				supportedByNotAffectedBrick = true
+			}
+		}
+		if !supportedByNotAffectedBrick {
+			w.CountBricksThatWouldFall(i, affectedBricks)
+		}
+	}
 }
