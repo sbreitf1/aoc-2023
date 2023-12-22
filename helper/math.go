@@ -16,3 +16,23 @@ func LeastCommonMultiple(vals ...int64) int64 {
 	}
 	return result
 }
+
+func Min[T Ordered](values ...T) T {
+	min := values[0]
+	for i := 1; i < len(values); i++ {
+		if values[i] < min {
+			min = values[i]
+		}
+	}
+	return min
+}
+
+func Max[T Ordered](values ...T) T {
+	max := values[0]
+	for i := 1; i < len(values); i++ {
+		if values[i] > max {
+			max = values[i]
+		}
+	}
+	return max
+}
