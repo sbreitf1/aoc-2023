@@ -1,5 +1,9 @@
 package helper
 
+type Integer interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
+}
+
 func GreatestCommonDivisor(a, b int64) int64 {
 	for b != 0 {
 		t := b
@@ -35,4 +39,12 @@ func Max[T Ordered](values ...T) T {
 		}
 	}
 	return max
+}
+
+func Mod[T Integer](d, m T) T {
+	var res T = d % m
+	if res < 0 && m > 0 {
+		return res + m
+	}
+	return res
 }
