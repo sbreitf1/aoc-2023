@@ -37,3 +37,19 @@ func IterateMapInKeyOrder[K Ordered, V any](m map[K]V, f func(k K, v V)) {
 		f(k, m[k])
 	}
 }
+
+func LinesToRunes(lines []string) [][]rune {
+	runeLines := make([][]rune, len(lines))
+	for y := 0; y < len(lines); y++ {
+		runeLines[y] = []rune(lines[y])
+	}
+	return runeLines
+}
+
+func RunesToLines(runeLines [][]rune) []string {
+	lines := make([]string, len(runeLines))
+	for y := 0; y < len(lines); y++ {
+		lines[y] = string(runeLines[y])
+	}
+	return lines
+}
