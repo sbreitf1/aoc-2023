@@ -20,6 +20,10 @@ func (p Point2D) Mul(factor int) Point2D {
 	return Point2D{X: p.X * factor, Y: p.Y * factor}
 }
 
+func (p Point2D) Cross(p2 Point2D) float64 {
+	return float64(p.X*p2.Y - p.Y*p2.X)
+}
+
 type Point3D struct {
 	X, Y, Z int
 }
@@ -38,4 +42,8 @@ func (p Point3D) Neg() Point3D {
 
 func (p Point3D) Mul(factor int) Point3D {
 	return Point3D{X: p.X * factor, Y: p.Y * factor, Z: p.Z * factor}
+}
+
+func (p Point3D) XY() Point2D {
+	return Point2D{X: p.X, Y: p.Y}
 }

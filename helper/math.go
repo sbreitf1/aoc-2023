@@ -4,6 +4,10 @@ type Integer interface {
 	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
 }
 
+type Number interface {
+	Integer | float32 | float64
+}
+
 func GreatestCommonDivisor(a, b int64) int64 {
 	for b != 0 {
 		t := b
