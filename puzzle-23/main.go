@@ -11,9 +11,9 @@ func main() {
 	lines := helper.ReadNonEmptyLines("example-1.txt")
 
 	world := ParseWorld(lines)
-	solution1 := world.FindLongestPathLengthFromTo(helper.Point2D{X: 1, Y: 0}, helper.Point2D{X: world.Width - 2, Y: world.Height - 1}, false)
+	solution1 := world.FindLongestPathLengthFromTo(helper.Point2D[int]{X: 1, Y: 0}, helper.Point2D[int]{X: world.Width - 2, Y: world.Height - 1}, false)
 	fmt.Println("-> part 1:", solution1)
-	//solution2 := world.FindLongestPathLengthFromTo(helper.Point2D{X: 1, Y: 0}, helper.Point2D{X: world.Width - 2, Y: world.Height - 1}, true)
+	//solution2 := world.FindLongestPathLengthFromTo(helper.Point2D[int]{X: 1, Y: 0}, helper.Point2D[int]{X: world.Width - 2, Y: world.Height - 1}, true)
 	//fmt.Println("-> part 2:", solution2)
 }
 
@@ -30,7 +30,7 @@ type World struct {
 	Tiles         [][]rune
 }
 
-func (w *World) FindLongestPathLengthFromTo(from, to helper.Point2D, part2 bool) int64 {
+func (w *World) FindLongestPathLengthFromTo(from, to helper.Point2D[int], part2 bool) int64 {
 	visited := make([][]bool, len(w.Tiles))
 	for y := 0; y < len(visited); y++ {
 		visited[y] = make([]bool, len(w.Tiles[y]))
@@ -43,7 +43,7 @@ func (w *World) FindLongestPathLengthFromTo(from, to helper.Point2D, part2 bool)
 	return maxPathLength
 }
 
-func (w *World) findLongestPathLengthFromToRecursive(visited [][]bool, from, to helper.Point2D, part2 bool) (int64, bool) {
+func (w *World) findLongestPathLengthFromToRecursive(visited [][]bool, from, to helper.Point2D[int], part2 bool) (int64, bool) {
 	if visited[from.Y][from.X] {
 		return 0, false
 	}
@@ -57,7 +57,7 @@ func (w *World) findLongestPathLengthFromToRecursive(visited [][]bool, from, to 
 		visited[from.Y][from.X] = false
 	}()
 
-	walkableChars := map[helper.Point2D]map[rune]bool{
+	walkableChars := map[helper.Point2D[int]]map[rune]bool{
 		{X: 0, Y: -1}: {'.': true, '^': true},
 		{X: 0, Y: 1}:  {'.': true, 'v': true},
 		{X: 1, Y: 0}:  {'.': true, '>': true},
@@ -66,7 +66,7 @@ func (w *World) findLongestPathLengthFromToRecursive(visited [][]bool, from, to 
 
 	var maxPathLength int64
 	var ok bool
-	for _, dir := range []helper.Point2D{{X: 0, Y: -1}, {X: 0, Y: 1}, {X: 1, Y: 0}, {X: -1, Y: 0}} {
+	for _, dir := range []helper.Point2D[int]{{X: 0, Y: -1}, {X: 0, Y: 1}, {X: 1, Y: 0}, {X: -1, Y: 0}} {
 		newPos := from.Add(dir)
 		if newPos.X < 0 || newPos.Y < 0 || newPos.X >= w.Width || newPos.Y >= w.Height {
 			continue

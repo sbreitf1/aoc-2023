@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	dirDown = helper.Point3D{X: 0, Y: 0, Z: -1}
-	dirUp   = helper.Point3D{X: 0, Y: 0, Z: 1}
+	dirDown = helper.Point3D[int]{X: 0, Y: 0, Z: -1}
+	dirUp   = helper.Point3D[int]{X: 0, Y: 0, Z: 1}
 )
 
 func main() {
@@ -40,8 +40,8 @@ func ParseWorld(lines []string) *World {
 			y2, _ := strconv.Atoi(m[5])
 			z2, _ := strconv.Atoi(m[6])
 			brick := Brick{
-				Min: helper.Point3D{X: helper.Min(x1, x2), Y: helper.Min(y1, y2), Z: helper.Min(z1, z2)},
-				Max: helper.Point3D{X: helper.Max(x1, x2), Y: helper.Max(y1, y2), Z: helper.Max(z1, z2)},
+				Min: helper.Point3D[int]{X: helper.Min(x1, x2), Y: helper.Min(y1, y2), Z: helper.Min(z1, z2)},
+				Max: helper.Point3D[int]{X: helper.Max(x1, x2), Y: helper.Max(y1, y2), Z: helper.Max(z1, z2)},
 			}
 			bricks = append(bricks, brick)
 		}
@@ -56,11 +56,11 @@ type World struct {
 }
 
 type Brick struct {
-	Min, Max helper.Point3D
+	Min, Max helper.Point3D[int]
 	Resting  bool
 }
 
-func (b *Brick) Move(dir helper.Point3D) {
+func (b *Brick) Move(dir helper.Point3D[int]) {
 	b.Min = b.Min.Add(dir)
 	b.Max = b.Max.Add(dir)
 }

@@ -46,12 +46,12 @@ func main() {
 
 func ParseGarden(lines []string) Garden {
 	tiles := make([][]rune, len(lines))
-	var startPos helper.Point2D
+	var startPos helper.Point2D[int]
 	for y := range lines {
 		tiles[y] = []rune(lines[y])
 		for x := range tiles[y] {
 			if tiles[y][x] == 'S' {
-				startPos = helper.Point2D{X: x, Y: y}
+				startPos = helper.Point2D[int]{X: x, Y: y}
 			}
 		}
 	}
@@ -66,21 +66,21 @@ func ParseGarden(lines []string) Garden {
 type Garden struct {
 	Width, Height int
 	Tiles         [][]rune
-	StartPos      helper.Point2D
+	StartPos      helper.Point2D[int]
 }
 
 func (g Garden) CountPossiblePositionsFromStartPos(steps int64, repeatX, repeatY bool) int64 {
 	return g.CountPossiblePositionsFromPos(g.StartPos, steps, repeatX, repeatY)
 }
 
-func (g Garden) CountPossiblePositionsFromPos(startPos helper.Point2D, steps int64, repeatX, repeatY bool) int64 {
+func (g Garden) CountPossiblePositionsFromPos(startPos helper.Point2D[int], steps int64, repeatX, repeatY bool) int64 {
 	type VisitKey struct {
-		Pos            helper.Point2D
+		Pos            helper.Point2D[int]
 		RemainingSteps int64
 	}
 	nextSteps := []VisitKey{{startPos, steps}}
 	visited := make(map[VisitKey]bool)
-	//visitedPoints := make(map[helper.Point2D]int64)
+	//visitedPoints := make(map[helper.Point2D[int]]int64)
 	for len(nextSteps) > 0 {
 		p := nextSteps[len(nextSteps)-1]
 		nextSteps = nextSteps[:len(nextSteps)-1]
@@ -104,7 +104,7 @@ func (g Garden) CountPossiblePositionsFromPos(startPos helper.Point2D, steps int
 			continue
 		}
 
-		for _, dir := range []helper.Point2D{{X: 0, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: -1}, {X: -1, Y: 0}} {
+		for _, dir := range []helper.Point2D[int]{{X: 0, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: -1}, {X: -1, Y: 0}} {
 			nextPos := p.Pos.Add(dir)
 			if !repeatX && (nextPos.X < 0 || nextPos.X >= g.Width) {
 				continue
@@ -185,10 +185,10 @@ func (g Garden) CountPossiblePositionsWithRepeat(steps int64) int64 {
 
 	fullFieldCountEven := g.CountPossiblePositionsFromStartPos(int64(2*g.StartPos.X+2*g.StartPos.Y)+(steps%2), false, false)
 	fullFieldCountOdd := g.CountPossiblePositionsFromStartPos(int64(2*g.StartPos.X+2*g.StartPos.Y)+(steps%2)+1, false, false)
-	/*fieldCountLeft := g.CountPossiblePositionsFromPos(helper.Point2D{X: g.Width - 1, Y: g.StartPos.Y}, int64(g.Width-1), false)
-	fieldCountRight := g.CountPossiblePositionsFromPos(helper.Point2D{X: 0, Y: g.StartPos.Y}, int64(g.Width-1), false)
-	fieldCountTop := g.CountPossiblePositionsFromPos(helper.Point2D{X: g.StartPos.X, Y: g.Height - 1}, int64(g.Height-1), false)
-	fieldCountBottom := g.CountPossiblePositionsFromPos(helper.Point2D{X: g.StartPos.X, Y: 0}, int64(g.Height-1), false)
+	/*fieldCountLeft := g.CountPossiblePositionsFromPos(helper.Point2D[int]{X: g.Width - 1, Y: g.StartPos.Y}, int64(g.Width-1), false)
+	fieldCountRight := g.CountPossiblePositionsFromPos(helper.Point2D[int]{X: 0, Y: g.StartPos.Y}, int64(g.Width-1), false)
+	fieldCountTop := g.CountPossiblePositionsFromPos(helper.Point2D[int]{X: g.StartPos.X, Y: g.Height - 1}, int64(g.Height-1), false)
+	fieldCountBottom := g.CountPossiblePositionsFromPos(helper.Point2D[int]{X: g.StartPos.X, Y: 0}, int64(g.Height-1), false)
 	fmt.Println(fullFieldCountOdd, fullFieldCountEven, fieldCountLeft, fieldCountRight, fieldCountTop, fieldCountBottom)*/
 
 	var sum int64
@@ -198,7 +198,7 @@ func (g Garden) CountPossiblePositionsWithRepeat(steps int64) int64 {
 	fullXCountOneDir := (steps - int64(g.StartPos.X) - int64(g.StartPos.Y)) / int64(g.Width)
 	sum += fullFieldCountEven + 2*((fullXCountOneDir/2+fullXCountOneDir%2)*fullFieldCountOdd+(fullXCountOneDir/2)*fullFieldCountEven)
 	fmt.Println(helper.Mod(int64(g.StartPos.X)-fullXCountOneDir*int64(g.Width), int64(g.Width)))
-	sum += g.CountPossiblePositionsFromPos(helper.Point2D{}, steps, false, false)
+	sum += g.CountPossiblePositionsFromPos(helper.Point2D[int]{}, steps, false, false)
 
 	return sum
 }

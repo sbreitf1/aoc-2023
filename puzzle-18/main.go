@@ -22,8 +22,8 @@ func main() {
 }
 
 type DigInstruction struct {
-	Pos helper.Point2D
-	Dir helper.Point2D
+	Pos helper.Point2D[int]
+	Dir helper.Point2D[int]
 	Len int
 	RGB string
 }
@@ -31,23 +31,23 @@ type DigInstruction struct {
 func ParseDigInstructions(lines []string) []DigInstruction {
 	pattern := regexp.MustCompile(`^([UDLR]+)\s+(\d+)\s+\(#([0-9a-f]{6})\)$`)
 
-	nextPos := helper.Point2D{X: 0, Y: 0}
+	nextPos := helper.Point2D[int]{X: 0, Y: 0}
 
 	digInstructions := make([]DigInstruction, len(lines))
 	for i := range lines {
 		m := pattern.FindStringSubmatch(lines[i])
 		if len(m) == 4 {
 			length, _ := strconv.Atoi(m[2])
-			var dir helper.Point2D
+			var dir helper.Point2D[int]
 			switch m[1] {
 			case "U":
-				dir = helper.Point2D{X: 0, Y: -1}
+				dir = helper.Point2D[int]{X: 0, Y: -1}
 			case "D":
-				dir = helper.Point2D{X: 0, Y: 1}
+				dir = helper.Point2D[int]{X: 0, Y: 1}
 			case "L":
-				dir = helper.Point2D{X: -1, Y: 0}
+				dir = helper.Point2D[int]{X: -1, Y: 0}
 			case "R":
-				dir = helper.Point2D{X: 1, Y: 0}
+				dir = helper.Point2D[int]{X: 1, Y: 0}
 			}
 			digInstructions[i] = DigInstruction{
 				Pos: nextPos,
@@ -86,20 +86,20 @@ func CountBoundaryTiles(digInstructions []DigInstruction) int64 {
 
 func TransformDigInstructions(digInstructions []DigInstruction) []DigInstruction {
 	diTransformed := make([]DigInstruction, len(digInstructions))
-	nextPos := helper.Point2D{X: 0, Y: 0}
+	nextPos := helper.Point2D[int]{X: 0, Y: 0}
 	for i := range digInstructions {
 		length, err := strconv.ParseInt(digInstructions[i].RGB[:5], 16, 32)
 		helper.ExitOnError(err)
-		var dir helper.Point2D
+		var dir helper.Point2D[int]
 		switch rune(digInstructions[i].RGB[5]) {
 		case '3':
-			dir = helper.Point2D{X: 0, Y: -1}
+			dir = helper.Point2D[int]{X: 0, Y: -1}
 		case '1':
-			dir = helper.Point2D{X: 0, Y: 1}
+			dir = helper.Point2D[int]{X: 0, Y: 1}
 		case '2':
-			dir = helper.Point2D{X: -1, Y: 0}
+			dir = helper.Point2D[int]{X: -1, Y: 0}
 		case '0':
-			dir = helper.Point2D{X: 1, Y: 0}
+			dir = helper.Point2D[int]{X: 1, Y: 0}
 		}
 		diTransformed[i] = DigInstruction{
 			Pos: nextPos,

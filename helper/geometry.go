@@ -1,49 +1,61 @@
 package helper
 
-type Point2D struct {
-	X, Y int
+type Point2D[T Number] struct {
+	X, Y T
 }
 
-func (p Point2D) Add(p2 Point2D) Point2D {
-	return Point2D{X: p.X + p2.X, Y: p.Y + p2.Y}
+func (p Point2D[T]) Add(p2 Point2D[T]) Point2D[T] {
+	return Point2D[T]{X: p.X + p2.X, Y: p.Y + p2.Y}
 }
 
-func (p Point2D) Sub(p2 Point2D) Point2D {
-	return Point2D{X: p.X - p2.X, Y: p.Y - p2.Y}
+func (p Point2D[T]) Sub(p2 Point2D[T]) Point2D[T] {
+	return Point2D[T]{X: p.X - p2.X, Y: p.Y - p2.Y}
 }
 
-func (p Point2D) Neg() Point2D {
-	return Point2D{X: -p.X, Y: -p.Y}
+func (p Point2D[T]) Neg() Point2D[T] {
+	return Point2D[T]{X: -p.X, Y: -p.Y}
 }
 
-func (p Point2D) Mul(factor int) Point2D {
-	return Point2D{X: p.X * factor, Y: p.Y * factor}
+func (p Point2D[T]) Mul(factor T) Point2D[T] {
+	return Point2D[T]{X: p.X * factor, Y: p.Y * factor}
 }
 
-func (p Point2D) Cross(p2 Point2D) float64 {
-	return float64(p.X*p2.Y - p.Y*p2.X)
+func (p Point2D[T]) Div(divisor T) Point2D[T] {
+	return Point2D[T]{X: p.X / divisor, Y: p.Y / divisor}
 }
 
-type Point3D struct {
-	X, Y, Z int
+func (p Point2D[T]) Cross(p2 Point2D[T]) float64 {
+	return float64(p.X)*float64(p2.Y) - float64(p.Y)*float64(p2.X)
 }
 
-func (p Point3D) Add(p2 Point3D) Point3D {
-	return Point3D{X: p.X + p2.X, Y: p.Y + p2.Y, Z: p.Z + p2.Z}
+func (p Point2D[T]) InBounds(min, max Point2D[T]) bool {
+	return p.X >= min.X && p.Y >= min.Y && p.X <= max.X && p.Y <= max.Y
 }
 
-func (p Point3D) Sub(p2 Point3D) Point3D {
-	return Point3D{X: p.X - p2.X, Y: p.Y - p2.Y, Z: p.Z - p2.Z}
+func ConvertPoint2D[FROM, TO Number](from Point2D[FROM]) Point2D[TO] {
+	return Point2D[TO]{X: TO(from.X), Y: TO(from.Y)}
 }
 
-func (p Point3D) Neg() Point3D {
-	return Point3D{X: -p.X, Y: -p.Y, Z: -p.Z}
+type Point3D[T Number] struct {
+	X, Y, Z T
 }
 
-func (p Point3D) Mul(factor int) Point3D {
-	return Point3D{X: p.X * factor, Y: p.Y * factor, Z: p.Z * factor}
+func (p Point3D[T]) Add(p2 Point3D[T]) Point3D[T] {
+	return Point3D[T]{X: p.X + p2.X, Y: p.Y + p2.Y, Z: p.Z + p2.Z}
 }
 
-func (p Point3D) XY() Point2D {
-	return Point2D{X: p.X, Y: p.Y}
+func (p Point3D[T]) Sub(p2 Point3D[T]) Point3D[T] {
+	return Point3D[T]{X: p.X - p2.X, Y: p.Y - p2.Y, Z: p.Z - p2.Z}
+}
+
+func (p Point3D[T]) Neg() Point3D[T] {
+	return Point3D[T]{X: -p.X, Y: -p.Y, Z: -p.Z}
+}
+
+func (p Point3D[T]) Mul(factor T) Point3D[T] {
+	return Point3D[T]{X: p.X * factor, Y: p.Y * factor, Z: p.Z * factor}
+}
+
+func (p Point3D[T]) XY() Point2D[T] {
+	return Point2D[T]{X: p.X, Y: p.Y}
 }
